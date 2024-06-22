@@ -156,6 +156,125 @@ struct ApfChannelWindowAdjust {
   std::string ToString() const;
 };
 
+// class AmtPortForwarding
+// The caller should monitor the fd() and drive the class by
+// calling ProcessOneMessage() when there's data available.
+// Caller then do necessary operation according to the returned
+// MeRequest object (e.g. open port, forward data etc.)
+class AmtPortForwarding {
+public:
+  // ME requests to open a listen port.
+  // Like SSH remote forwarding.
+  // Must call accept() or reject().
+  struct RequestTcpForward {
+    std::string addr;
+    uint32_t port;
+
+    std::function<void()> accept;
+    std::function<void()> reject;
+  };
+
+  // Returned after OpenChannel(), can be successful or failure.
+  // SendData() should not be called before receiving a successful
+  // result.
+  struct OpenChannelResult {
+    uint32_t channel_id;
+    bool success;
+  };
+
+  // Caller must receive the completion before calling the next
+  // SendData.
+  struct SendDataCompletion {
+    uint32_t channel_id;
+  };
+
+  // Indicates that new data has arrived.
+  // Caller must call PeekData() / ConsumeData()
+  struct IncomingData {
+    uint32_t channel_id;
+  };
+
+  // Indicates that ME closed writer side of a channel.
+  // Caller should call CloseChannel() if it hasn't already.
+  struct ChannelClosed {
+    // TODO
+  };
+
+  // ME disconnected, caller should stop calling ProcessOneMessage()
+  struct MeDisconnect {};
+
+  // nullopt means no special action is needed.
+  typedef std::optional<
+      std::variant<RequestTcpForward, OpenChannelResult, SendDataCompletion, IncomingData,
+                   ChannelClosed, MeDisconnect>>
+      MeRequest;
+
+  explicit AmtPortForwarding(std::string mei_dev);
+  ~AmtPortForwarding();
+
+  // Poll one message from MEI and dispatch it to
+  // the corresponding Handler function.
+  MeRequest ProcessOneMessage();
+
+  // port_from: TCP port of the initiator
+  // port_to: port of the ME, must come from RequestTcpForward::port
+  // return: an assigned channel id.
+  uint32_t OpenChannel(uint32_t port_from, uint32_t port_to);
+
+  // Send data to channel.
+  // Caller must wait for SendDataCompletion
+  // Returns false if data cannot be sent.
+  bool SendData(uint32_t channel_id, absl::Span<const uint8_t> data);
+
+  // Read data from ME after receiving IncomingData.
+  // After finishing using the data, call PopData() to remove the first N bytes.
+  const std::string *PeekData(uint32_t channel_id);
+  void PopData(uint32_t channel_id, uint32_t bytes_to_pop);
+
+  void CloseChannel(uint32_t me_channel_id);
+  // void RelaxWindow(uint32_t me_channel_id, uint32_t bytes);
+
+  int fd() const { return fd_; }
+
+private:
+  struct OpenedChannel {
+    uint32_t peer_channel_id;
+
+    uint32_t send_window;
+    // data to be sent to ME
+    std::string send_buf;
+    // data received from ME
+    std::string recv_buf;
+
+    bool want_send_completion;
+  };
+
+  // Process message and fill ret.
+  // Returns true if processing succeeded.
+  bool Process(const ApfDisconnect &msg, MeRequest &ret);
+  bool Process(const ApfProtocolVersion &msg, MeRequest &ret);
+  bool Process(const ApfServiceRequest &msg, MeRequest &ret);
+  bool Process(const ApfGlobalMessage &msg, MeRequest &ret);
+  bool Process(const ApfChannelOpenConfirmation &msg, MeRequest &ret);
+  bool Process(const ApfChannelData &msg, MeRequest &ret);
+  bool Process(const ApfChannelWindowAdjust &msg, MeRequest &ret);
+
+  // Send to ME via MEI
+  void Send(std::string data);
+  // Send send_buf to ME
+  void FlushSendBuffer(OpenedChannel &channel);
+
+  uint64_t max_msg_length_;
+  uint64_t buffer_length_;
+  std::unique_ptr<uint8_t[]> buffer_;
+
+  // channel buffers, key is local channel id.
+  std::unordered_map<uint32_t, OpenedChannel> channels_;
+  // std::unordered_map<uint32_t, uint32_t> local_to_me_channel_;
+  uint32_t next_channel_id_ = 0;
+  int fd_ = -1;
+};
+
 } // namespace amt
 
 #endif //__APF_H__
