@@ -1,5 +1,5 @@
-hdrs:=apf.h   hexdump.h                    die.h
-srcs:=apf.cpp hexdump.cpp apf_messages.cpp       apfd.cpp
+hdrs:=apf.h hexdump.h die.h mem_extract.h
+srcs:=apf.cpp hexdump.cpp apf_messages.cpp apfd.cpp
 libs:=absl_strings absl_flags_parse absl_str_format
 
 apfd: $(hdrs) $(srcs) Makefile
