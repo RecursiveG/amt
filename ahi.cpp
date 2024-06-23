@@ -75,6 +75,23 @@ AmtHostInterface::~AmtHostInterface() {
   }
 }
 
+std::string AmtHostInterface::CustomCommand(absl::Span<uint8_t> req) {
+  size_t write_len = req.size();
+  die_if(write_len > max_msg_length_, "write message too large");
+  auto recv_buf = std::make_unique<uint8_t[]>(max_msg_length_ + 1);
+
+  ssize_t written = write(fd_, req.data(), write_len);
+  die_if(written < 0, "write errno=%u", errno);
+  die_if(static_cast<size_t>(written) != write_len, "write error");
+
+  ssize_t r = read(fd_, recv_buf.get(), max_msg_length_ + 1);
+  die_if(r <= 0, "read errno=%u", errno);
+  die_if(static_cast<size_t>(r) > max_msg_length_, "reply too large:\n%s",
+         Hexdump(recv_buf.get(), r));
+
+  return std::string(reinterpret_cast<const char *>(recv_buf.get()), r);
+}
+
 bool AmtHostInterface::GetLocalSystemAccount(GetLocalSystemAccountResponse &rsp) {
   struct {
     AhiHeader header;

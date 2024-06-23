@@ -45,5 +45,24 @@ int main(int argc, char *argv[]) {
       std::cout << absl::StrFormat("Handle %#010x %s\n", handle, rsp2.ToString());
     }
   }
+
+  {
+    AhiHeader req{};
+    req.Init(0x4000011, 0);
+    std::string rsp =
+        ahi.CustomCommand(absl::MakeSpan(reinterpret_cast<uint8_t *>(&req), sizeof(req)));
+    std::cout << "GetProvisioningState:" << std::endl
+              << Hexdump(rsp.data(), rsp.size()) << std::endl;
+  }
+
+  {
+    AhiHeader req{};
+    req.Init(0x400006b, 0);
+    std::string rsp =
+        ahi.CustomCommand(absl::MakeSpan(reinterpret_cast<uint8_t *>(&req), sizeof(req)));
+    std::cout << "GetControlMode:" << std::endl
+              << Hexdump(rsp.data(), rsp.size()) << std::endl;
+  }
+
   return 0;
 }
