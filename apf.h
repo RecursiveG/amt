@@ -197,7 +197,7 @@ public:
   // Indicates that ME closed writer side of a channel.
   // Caller should call CloseChannel() if it hasn't already.
   struct ChannelClosed {
-    // TODO
+    uint32_t channel_id;
   };
 
   // ME disconnected, caller should stop calling ProcessOneMessage()
@@ -223,16 +223,16 @@ public:
 
   // Send data to channel.
   // Caller must wait for SendDataCompletion
-  // Returns false if data cannot be sent.
-  bool SendData(uint32_t channel_id, absl::Span<const uint8_t> data);
+  void SendData(uint32_t channel_id, absl::Span<const uint8_t> data);
 
   // Read data from ME after receiving IncomingData.
   // After finishing using the data, call PopData() to remove the first N bytes.
   const std::string *PeekData(uint32_t channel_id);
   void PopData(uint32_t channel_id, uint32_t bytes_to_pop);
 
-  void CloseChannel(uint32_t me_channel_id);
-  // void RelaxWindow(uint32_t me_channel_id, uint32_t bytes);
+  // Close the channel
+  // TODO graceful shutdown.
+  void CloseChannel(uint32_t channel_id);
 
   int fd() const { return fd_; }
 
@@ -256,6 +256,7 @@ private:
   bool Process(const ApfServiceRequest &msg, MeRequest &ret);
   bool Process(const ApfGlobalMessage &msg, MeRequest &ret);
   bool Process(const ApfChannelOpenConfirmation &msg, MeRequest &ret);
+  bool Process(const ApfChannelClose &msg, MeRequest &ret);
   bool Process(const ApfChannelData &msg, MeRequest &ret);
   bool Process(const ApfChannelWindowAdjust &msg, MeRequest &ret);
 

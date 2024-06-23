@@ -94,6 +94,7 @@ AmtPortForwarding::MeRequest AmtPortForwarding::ProcessOneMessage() {
     CASE_MSG_TYPE(ApfServiceRequest);
     CASE_MSG_TYPE(ApfGlobalMessage);
     CASE_MSG_TYPE(ApfChannelOpenConfirmation);
+    CASE_MSG_TYPE(ApfChannelClose);
     CASE_MSG_TYPE(ApfChannelData);
     CASE_MSG_TYPE(ApfChannelWindowAdjust);
     default: parsing_success = false;
@@ -138,7 +139,7 @@ bool AmtPortForwarding::Process(const ApfProtocolVersion &msg, MeRequest &ret) {
 bool AmtPortForwarding::Process(const ApfServiceRequest &msg, MeRequest &ret) {
   absl::PrintF("Received %s\n", msg.ToString());
 
-  if (msg.service_name == "pfwd@amt.inte.com") {
+  if (msg.service_name == "pfwd@amt.intel.com") {
     ApfServiceAccept acc{};
     acc.service_name = msg.service_name;
     Send(acc.Serialize());
@@ -188,6 +189,16 @@ bool AmtPortForwarding::Process(const ApfChannelOpenConfirmation &msg, MeRequest
   return true;
 }
 
+bool AmtPortForwarding::Process(const ApfChannelClose &msg, MeRequest &ret) {
+  absl::PrintF("Received %s\n", msg.ToString());
+
+  // cleanup is handled in CloseChannel().
+  ret = ChannelClosed{
+      .channel_id = msg.recipient_channel,
+  };
+  return true;
+}
+
 bool AmtPortForwarding::Process(const ApfChannelData &msg, MeRequest &ret) {
   // absl::PrintF("Received ChannelData\n%s", Hexdump(msg.data.data(), msg.data.size()));
   auto it = channels_.find(msg.recipient_channel);
@@ -231,6 +242,7 @@ bool AmtPortForwarding::Process(const ApfChannelWindowAdjust &msg, MeRequest &re
 //
 
 uint32_t AmtPortForwarding::OpenChannel(uint32_t port_from, uint32_t port_to) {
+  // TODO handle port collision
   ApfChannelOpenRequest req{};
   req.is_forwarded = true;
   req.sender_channel = next_channel_id_++;
@@ -245,24 +257,24 @@ uint32_t AmtPortForwarding::OpenChannel(uint32_t port_from, uint32_t port_to) {
   return req.sender_channel;
 }
 
-void AmtPortForwarding::CloseChannel(uint32_t me_channel_id) {
+void AmtPortForwarding::CloseChannel(uint32_t channel_id) {
   // TODO pending buffer
   // TODO two-way close bookkeeping.
-  ApfChannelClose req{.recipient_channel = me_channel_id};
+  auto it = channels_.find(channel_id);
+  die_if(it == channels_.end(), "unknown channel to close : %u", channel_id);
+
+  ApfChannelClose req{.recipient_channel = it->second.peer_channel_id};
   Send(req.Serialize());
+  channels_.erase(it);
 }
 
-bool AmtPortForwarding::SendData(uint32_t channel_id, absl::Span<const uint8_t> data) {
+void AmtPortForwarding::SendData(uint32_t channel_id, absl::Span<const uint8_t> data) {
   die_if(data.size() == 0, "Cannot send 0 byte.");
   auto it = channels_.find(channel_id);
-  if (it == channels_.end()) {
-    absl::PrintF("Channel not found.\n");
-    return false;
-  }
+  die_if(it == channels_.end(), "Channel %u not found.", channel_id);
 
   it->second.send_buf.append(reinterpret_cast<const char *>(data.data()), data.size());
   FlushSendBuffer(it->second);
-  return true;
 }
 
 const std::string *AmtPortForwarding::PeekData(uint32_t channel_id) {

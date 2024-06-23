@@ -188,7 +188,12 @@ bool ApfGlobalMessage::Deserialize(absl::Span<uint8_t> data) {
 
 std::string ApfGlobalMessage::Serialize() const { die("unimplemented"); }
 
-std::string ApfGlobalMessage::ToString() const { die("unimplemented"); }
+std::string ApfGlobalMessage::ToString() const {
+  return absl::StrFormat(
+      "ApfGlobalMessage{request=%s, %s, address_to_bind=%s, port_to_bind=%u}",
+      request_string, want_reply ? "want_reply" : "dont_want_reply", address_to_bind,
+      port_to_bind);
+}
 
 bool ApfRequestSuccess::Deserialize(absl::Span<uint8_t> data) {
   // TODO unimplemented
