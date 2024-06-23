@@ -94,3 +94,17 @@ std::string HexString(const void *data, size_t size) {
   }
   return ret;
 }
+
+std::string HexUuid(const void *data, size_t size) {
+  if (size != 16) {
+    return "invalid uuid " + HexString(data, size);
+  }
+  std::string ret;
+  const char *ptr = static_cast<const char *>(data);
+  ret += HexString(ptr, 4) + "-";
+  ret += HexString(ptr + 4, 2) + "-";
+  ret += HexString(ptr + 6, 2) + "-";
+  ret += HexString(ptr + 8, 2) + "-";
+  ret += HexString(ptr + 10, 6);
+  return ret;
+}

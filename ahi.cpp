@@ -75,7 +75,7 @@ AmtHostInterface::~AmtHostInterface() {
   }
 }
 
-bool AmtHostInterface::GetLocalSystemAccount(AhiGetLocalSystemAccountResponse &rsp) {
+bool AmtHostInterface::GetLocalSystemAccount(GetLocalSystemAccountResponse &rsp) {
   struct {
     AhiHeader header;
     uint8_t reserved[40];
@@ -101,6 +101,12 @@ bool AmtHostInterface::GetCertificateHashEntry(GetCertificateHashEntryResponse &
 
   req.header.Init(0x0400002D, 4);
   req.handle = handle;
+  return RunExchange(req, rsp, fd_, max_msg_length_);
+}
+
+bool AmtHostInterface::GetUuid(GetUuidResponse &rsp) {
+  AhiHeader req{};
+  req.Init(0x0400005C, 0);
   return RunExchange(req, rsp, fd_, max_msg_length_);
 }
 

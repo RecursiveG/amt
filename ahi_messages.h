@@ -101,7 +101,7 @@ struct GetCertificateHashEntryResponse {
   }
 };
 
-struct AhiGetLocalSystemAccountResponse {
+struct GetLocalSystemAccountResponse {
   AhiHeader header;
   uint32_t amt_status;
   std::string username;
@@ -114,6 +114,25 @@ struct AhiGetLocalSystemAccountResponse {
     absl::StrAppendFormat(&ret, "%s, status=%u", header.ToString(), amt_status);
     if (amt_status == 0) {
       absl::StrAppendFormat(&ret, ", user=%s, passwd=%s", username, password);
+    }
+    absl::StrAppend(&ret, "}");
+    return ret;
+  }
+};
+
+struct GetUuidResponse {
+  AhiHeader header;
+  uint32_t amt_status;
+  // --
+  std::array<uint8_t, 16> uuid;
+
+  bool Deserialize(absl::Span<uint8_t> data);
+
+  std::string ToString() const {
+    std::string ret = "GetUuidResponse{";
+    absl::StrAppendFormat(&ret, "%s, status=%u", header.ToString(), amt_status);
+    if (amt_status == 0) {
+      absl::StrAppend(&ret, ", uuid=", HexUuid(uuid.data(), 16));
     }
     absl::StrAppend(&ret, "}");
     return ret;

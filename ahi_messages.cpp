@@ -16,7 +16,7 @@ namespace amt {
     }                                                                                    \
   } while (0)
 
-bool AhiGetLocalSystemAccountResponse::Deserialize(absl::Span<uint8_t> data) {
+bool GetLocalSystemAccountResponse::Deserialize(absl::Span<uint8_t> data) {
   ParseHeader();
 
   if (data.size() != 16 + 66 + 2) {
@@ -80,6 +80,15 @@ bool GetCertificateHashEntryResponse::Deserialize(absl::Span<uint8_t> data) {
   ExtractRaw(certificate_hash.data(), data.subspan(24, 64));
   Extract(&hash_algorithm, data.subspan(88, 1));
   name = ExtractString(data.subspan(91, name_len));
+  return true;
+}
+
+bool GetUuidResponse::Deserialize(absl::Span<uint8_t> data) {
+  ParseHeader();
+  if (data.size() < 16 + 16) {
+    return false;
+  }
+  ExtractRaw(uuid.data(), data.subspan(16, 16));
   return true;
 }
 

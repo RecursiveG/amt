@@ -19,7 +19,14 @@ int main(int argc, char *argv[]) {
   AmtHostInterface ahi(absl::GetFlag(FLAGS_mei_device));
 
   {
-    AhiGetLocalSystemAccountResponse rsp;
+    GetUuidResponse rsp;
+    bool success = ahi.GetUuid(rsp);
+    die_if(!success, "GetUuid");
+    std::cout << rsp.ToString() << std::endl;
+  }
+
+  {
+    GetLocalSystemAccountResponse rsp;
     bool success = ahi.GetLocalSystemAccount(rsp);
     die_if(!success, "GetLocalSystemAccount");
     std::cout << rsp.ToString() << std::endl;

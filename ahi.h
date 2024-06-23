@@ -10,9 +10,10 @@ public:
   ~AmtHostInterface();
 
   // Return: true if success
-  bool GetLocalSystemAccount(AhiGetLocalSystemAccountResponse &rsp);
+  bool GetLocalSystemAccount(GetLocalSystemAccountResponse &rsp);
   bool EnumerateHashHandles(EnumerateHashHandlesResponse &rsp);
   bool GetCertificateHashEntry(GetCertificateHashEntryResponse &rsp, uint32_t handle);
+  bool GetUuid(GetUuidResponse &rsp);
 
 private:
   uint64_t max_msg_length_;
