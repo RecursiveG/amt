@@ -215,6 +215,7 @@ bool AmtPortForwarding::Process(const ApfChannelData &msg, MeRequest &ret) {
 }
 
 bool AmtPortForwarding::Process(const ApfChannelWindowAdjust &msg, MeRequest &ret) {
+  // absl::PrintF("Received %s\n", msg.ToString());
   auto it = channels_.find(msg.recipient_channel);
   if (it == channels_.end()) {
     absl::PrintF("Recipient channel not found.\n");
@@ -229,9 +230,11 @@ bool AmtPortForwarding::Process(const ApfChannelWindowAdjust &msg, MeRequest &re
   }
 
   if (channel.send_buf.empty() && channel.want_send_completion) {
+    // std::cerr << "completion raised " << msg.recipient_channel << std::endl;
     ret = SendDataCompletion{
         .channel_id = msg.recipient_channel,
     };
+    channel.want_send_completion = false;
   }
 
   return true;
@@ -268,13 +271,16 @@ void AmtPortForwarding::CloseChannel(uint32_t channel_id) {
   channels_.erase(it);
 }
 
-void AmtPortForwarding::SendData(uint32_t channel_id, absl::Span<const uint8_t> data) {
+bool AmtPortForwarding::SendData(uint32_t channel_id, absl::Span<const uint8_t> data) {
   die_if(data.size() == 0, "Cannot send 0 byte.");
   auto it = channels_.find(channel_id);
   die_if(it == channels_.end(), "Channel %u not found.", channel_id);
 
   it->second.send_buf.append(reinterpret_cast<const char *>(data.data()), data.size());
+  // std::cerr << "send data enqueued " << channel_id << std::endl;
+  it->second.want_send_completion = true;
   FlushSendBuffer(it->second);
+  return !it->second.send_buf.empty();
 }
 
 const std::string *AmtPortForwarding::PeekData(uint32_t channel_id) {

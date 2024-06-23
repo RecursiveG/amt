@@ -222,8 +222,8 @@ public:
   uint32_t OpenChannel(uint32_t port_from, uint32_t port_to);
 
   // Send data to channel.
-  // Caller must wait for SendDataCompletion
-  void SendData(uint32_t channel_id, absl::Span<const uint8_t> data);
+  // Returns: if caller must wait for SendDataCompletion
+  bool SendData(uint32_t channel_id, absl::Span<const uint8_t> data);
 
   // Read data from ME after receiving IncomingData.
   // After finishing using the data, call PopData() to remove the first N bytes.

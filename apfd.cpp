@@ -65,6 +65,7 @@ public:
         int fd = events[i].data.fd;
 
         if (fd == apf_.fd()) {
+          // std::cerr << "poll apf" << std::endl;
           HandleMeRequest(apf_.ProcessOneMessage());
         } else if (auto it = listen_fd_port_.find(fd); it != listen_fd_port_.end()) {
           HandleIncomingConnection(fd);
@@ -72,9 +73,11 @@ public:
           auto it2 = channels_.find(it->second);
           die_if(it2 == channels_.end(), "inconsistent state");
           if (events[i].events & EPOLLIN) {
+            // std::cerr << "poll fd in " << fd << std::endl;
             HandleFdToApfData(/*is_fd=*/true, it2->second);
           }
           if (events[i].events & EPOLLOUT) {
+            // std::cerr << "poll fd out " << fd << std::endl;
             HandleApfToFdData(/*is_fd=*/true, it2->second);
           }
           if (events[i].events & (EPOLLHUP | EPOLLRDHUP)) {
@@ -228,24 +231,24 @@ private:
       return;
     }
 
+    if (!is_fd) {
+      // std::cerr << "Channel unblocked " << channel.fd << std::endl;
+      channel.apf_blocked = false;
+    }
+
     // Either APF is unblocked or new data arrives.
     uint8_t buf[4096];
     int r = read(channel.fd, buf, 4096);
     if (r < 0 && errno == EAGAIN) {
-      if (!is_fd)
-        channel.apf_blocked = false;
       return;
     }
     if (r == 0) {
-      if (!is_fd)
-        channel.apf_blocked = false;
       absl::PrintF("EOF fd=%d\n", channel.fd);
       return;
     }
     die_if(r < 0, "read err r=%d errno=%d", r, errno);
 
-    apf_.SendData(channel.channel_id, absl::MakeConstSpan(buf, r));
-    channel.apf_blocked = true;
+    channel.apf_blocked = apf_.SendData(channel.channel_id, absl::MakeConstSpan(buf, r));
   }
 
   void HandleApfToFdData(bool is_fd, ChannelInfo &channel) {
