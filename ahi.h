@@ -11,6 +11,8 @@ public:
 
   // Return: true if success
   bool GetLocalSystemAccount(AhiGetLocalSystemAccountResponse &rsp);
+  bool EnumerateHashHandles(EnumerateHashHandlesResponse &rsp);
+  bool GetCertificateHashEntry(GetCertificateHashEntryResponse &rsp, uint32_t handle);
 
 private:
   uint64_t max_msg_length_;

@@ -85,4 +85,23 @@ bool AmtHostInterface::GetLocalSystemAccount(AhiGetLocalSystemAccountResponse &r
   return RunExchange(req, rsp, fd_, max_msg_length_);
 }
 
+bool AmtHostInterface::EnumerateHashHandles(EnumerateHashHandlesResponse &rsp) {
+  AhiHeader req{};
+  req.Init(0x400002c, 0);
+  return RunExchange(req, rsp, fd_, max_msg_length_);
+}
+
+bool AmtHostInterface::GetCertificateHashEntry(GetCertificateHashEntryResponse &rsp,
+                                               uint32_t handle) {
+  struct {
+    AhiHeader header;
+    uint32_t handle;
+  } __attribute__((packed)) req;
+  static_assert(sizeof(req) == 12 + 4);
+
+  req.header.Init(0x0400002D, 4);
+  req.handle = handle;
+  return RunExchange(req, rsp, fd_, max_msg_length_);
+}
+
 } // namespace amt
